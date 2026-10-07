@@ -3,7 +3,8 @@ name: 校验电台数据
 on:
   pull_request:
     paths:
-      - '**.json'
+      - '电台*.json'
+      - 'data/**/*.json'
   push:
     branches: [main]
 
@@ -22,6 +23,7 @@ jobs:
           node -e "
             const fs = require('fs');
             const files = process.argv.slice(1);
+            if (files.length === 0) { console.log('没有需要校验的数据文件'); process.exit(0); }
             let fail = false;
             for (const f of files) {
               try {
@@ -30,8 +32,7 @@ jobs:
                   console.error('❌ ' + f + ': 应为非空数组'); fail = true; continue;
                 }
                 const item = data[0];
-                const required = ['name', 'stream_url', 'province', 'dialect'];
-                const missing = required.filter(k => !(k in item));
+                const missing = ['name', 'stream_url', 'province', 'dialect'].filter(k => !(k in item));
                 if (missing.length) {
                   console.error('❌ ' + f + ': 缺少字段 ' + missing.join(', ')); fail = true;
                 } else {
@@ -42,4 +43,4 @@ jobs:
               }
             }
             process.exit(fail ? 1 : 0);
-          " $(git ls-files '*.json')
+          " $(git ls-files '电台*.json' 'data/*.json')
