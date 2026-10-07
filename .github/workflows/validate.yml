@@ -1,0 +1,45 @@
+name: 校验电台数据
+
+on:
+  pull_request:
+    paths:
+      - '**.json'
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 校验 JSON 格式与数据结构
+        run: |
+          node -e "
+            const fs = require('fs');
+            const files = process.argv.slice(1);
+            let fail = false;
+            for (const f of files) {
+              try {
+                const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+                if (!Array.isArray(data) || data.length === 0) {
+                  console.error('❌ ' + f + ': 应为非空数组'); fail = true; continue;
+                }
+                const item = data[0];
+                const required = ['name', 'stream_url', 'province', 'dialect'];
+                const missing = required.filter(k => !(k in item));
+                if (missing.length) {
+                  console.error('❌ ' + f + ': 缺少字段 ' + missing.join(', ')); fail = true;
+                } else {
+                  console.log('✅ ' + f + ': ' + data.length + ' 条数据，结构合法');
+                }
+              } catch (e) {
+                console.error('❌ ' + f + ': JSON 解析失败 - ' + e.message); fail = true;
+              }
+            }
+            process.exit(fail ? 1 : 0);
+          " $(git ls-files '*.json')
